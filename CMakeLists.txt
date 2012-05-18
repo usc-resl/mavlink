@@ -12,7 +12,7 @@ set(LIBRARY_VERSION ${PROJECT_VERSION})
 set(LIBRARY_SOVERSION "0.0.0")
 
 # third party 
-set(BOOST_REQUIRED_VERSION 1.4.2) # required for asio
+set(BOOST_REQUIRED_VERSION 1.49.0) # required for asio
 
 # options
 option(WITH_ASIO "With boost asio server/client." ON)
