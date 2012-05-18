@@ -12,12 +12,27 @@ set(LIBRARY_VERSION ${PROJECT_VERSION})
 set(LIBRARY_SOVERSION "0.0.0")
 
 # third party 
-# none required
+set(BOOST_REQUIRED_VERSION 1.4.2) # required for asio
 
 # options
-option(WITH_TESTS "Build test programs." OFF)
+option(WITH_ASIO "With boost asio server/client." ON)
 option(WITH_BUILD_DEPS "Build dependencies." OFF) # no deps currently to build
+option(WITH_BUILD_SHARED "Build the shared library." OFF)
 option(WITH_BUILD_STATIC "Build preferring static linking." ON)
+option(WITH_BUILD_TESTS "Build tests." OFF)
+option(WITH_WARNINGS "Enable warnings." OFF)
+
+set(RECURSE_OPTIONS_LIST
+    WITH_ASIO
+    WITH_BUILD_DEPS
+    WITH_BUILD_SHARED
+    WITH_BUILD_STATIC
+    WITH_BUILD_TESTS
+    WITH_WARNINGS
+    CMAKE_TOOLCHAIN_FILE
+    CMAKE_INSTALL_PREFIX
+    EP_BASE_DIR
+) 
 
 # variables
 set(ROOT_THREAD TRUE CACHE INTERNAL "Is this the top level of the recursion?")
@@ -35,15 +50,21 @@ include(CheckLibraryExists)
 #include(CheckCSourceCompiles)
 include(ExternalProjectWithFilename)
 
+# external projects find path
+if(NOT EP_BASE_DIR)
+    set(EP_BASE_DIR "${CMAKE_BINARY_DIR}/CMakeExternals")
+endif()
+set_property(DIRECTORY PROPERTY EP_BASE ${EP_BASE_DIR})
+set(EP_INSTALL_DIR "${EP_BASE_DIR}/Install")
+list(APPEND CMAKE_FIND_ROOT_PATH ${EP_BASE_DIR})
+
 # spawn new cmake to build deps
 if (WITH_BUILD_DEPS AND ROOT_THREAD)
-    execute_process(COMMAND ${CMAKE_COMMAND} "${CMAKE_SOURCE_DIR}"
-        "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"
-        "-DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}"
-        "-DWITH_BUILD_DEPS=${WITH_BUILD_DEPS}"
-        "-DWITH_BUILD_STATIC=${WITH_BUILD_STATIC}"
-        "-DWITH_TESTS=${WITH_TESTS}"
-        "-DROOT_THREAD=FALSE"
+    set(CMAKE_RECURSE_ARGS "-DROOT_THREAD=FALSE")
+    foreach(OPT ${RECURSE_OPTIONS_LIST})
+        list(APPEND CMAKE_RECURSE_ARGS "-D${OPT}=${${OPT}}")
+    endforeach()
+    execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR} ${CMAKE_RECURSE_ARGS}
         RESULT_VARIABLE ERROR)
     if (ERROR)
         message(FATAL_ERROR "error, recursing loop returned error code: ${ERROR}")
@@ -53,17 +74,10 @@ if (WITH_BUILD_DEPS AND ROOT_THREAD)
     message("** Configuring ${PROJECT_NAME}")
 endif()
 
-# external projects find path
-if(NOT EP_BASE_DIR)
-    set(EP_BASE_DIR "${CMAKE_BINARY_DIR}/CMakeExternals")
-endif()
-set_property(DIRECTORY PROPERTY EP_BASE ${EP_BASE_DIR})
-set(EP_INSTALL_DIR "${EP_BASE_DIR}/Install")
-list(APPEND CMAKE_FIND_ROOT_PATH ${EP_BASE_DIR})
-
 # prefer static packages if building static library
 message("** Finding libraries")
 if (WITH_BUILD_STATIC)
+    set(BOOST_USE_STATIC_LIBS ON)
     # prefer static libs
     if(WIN32)
         set(CMAKE_FIND_LIBRARY_SUFFIXES .lib .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
@@ -72,14 +86,18 @@ if (WITH_BUILD_STATIC)
     endif()
 endif()
 
-# find libraries with cmake modules
-find_package(PythonInterp)
-
 # enable languages
-if (WITH_TESTS)
+if (WITH_TESTS OR WITH_ASIO)
     enable_language(C)
     enable_language(CXX)
     include(DefineCompilerFlags)
+endif()
+
+# find libraries with cmake modules
+find_package(PythonInterp)
+if (WITH_ASIO)
+    find_package(Boost ${BOOST_REQUIRED_VERSION} REQUIRED COMPONENTS system)
+    find_package(Threads REQUIRED)
 endif()
 
 # build dependencies
@@ -152,8 +170,13 @@ set(v1.0Definitions
     )
 generateMavlink("1.0" "${v1.0Definitions}")
 
+# asio
+if (WITH_ASIO)
+    add_subdirectory(asio)
+endif()
+
 # testing
-if (BUILD_TEST)
+if (WITH_BUILD_TESTING)
     if (UNIX) 
         include_directories(${CMAKE_BINARY_DIR}/include/v0.9/common)
         # TODO fix udp example
