@@ -1389,6 +1389,19 @@
                <field type="int16_t" name="vz">Ground Z Speed (Altitude), expressed as m/s * 100</field>
                <field type="uint16_t" name="hdg">Compass heading in degrees * 100, 0.0..359.99 degrees. If unknown, set to: UINT16_MAX</field>
           </message>
+          <message id="83" name="ACTUATOR_CONTROLS">
+               <description>The actuator controls (that are input to the mixer).</description>
+               <field type="uint32_t" name="time_usec">Timestamp (microseconds since system boot)</field>
+               <field type="uint8_t" name="group">Group (0-3)</field>
+               <field type="float" name="c0">control 0</field>
+               <field type="float" name="c1">control 1</field>
+               <field type="float" name="c2">control 2</field>
+               <field type="float" name="c3">control 3</field>
+               <field type="float" name="c4">control 4</field>
+               <field type="float" name="c5">control 5</field>
+               <field type="float" name="c6">control 6</field>
+               <field type="float" name="c7">control 7</field>
+          </message>
           <message id="34" name="RC_CHANNELS_SCALED">
                <description>The scaled values of the RC channels received. (-100%) -10000, (0%) 0, (100%) 10000. Channels that are inactive should be set to UINT16_MAX.</description>
                <field type="uint32_t" name="time_boot_ms">Timestamp (milliseconds since system boot)</field>
